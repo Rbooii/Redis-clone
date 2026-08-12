@@ -1,4 +1,5 @@
 #include <iostream>
+#include <optional>
 #include "store.hpp"
 
 int main(void){
@@ -18,9 +19,9 @@ int main(void){
         std::string searchKey;
         std::cout << "Query data per key :";
         std::cin >> searchKey;
-        std::string getQuery = db.get(searchKey);
-        if(getQuery != ""){
-            std::cout << "key:" << searchKey << "val:" << getQuery << "\n";
+        std::optional<std::string> getQuery = db.get(searchKey);
+        if(getQuery.has_value()){
+            std::cout << "key:" << searchKey << "val:" << getQuery.value() << "\n";
         }else{
             std::cout << "Key not found!\n";
         }
