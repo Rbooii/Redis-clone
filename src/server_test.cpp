@@ -7,6 +7,10 @@
 
 uint16_t SERVERPORT = 3000;
 
+std::string concat(std::string str1, std::string str2){
+    return str1+str2;
+}
+
 static void reportErrorMsg(std::string x){
     using namespace std;
     cout << "Crash, Error from -> " << x << endl;
@@ -24,8 +28,8 @@ static void do_something_lol(int connfd){
         return;
     }
     std::cout << "Client says : " << rbuf << std::endl;
-    char wbuf[] = "world";
-    write(connfd, wbuf, std::string_view(wbuf).length());
+    std::string wbuf = concat("emak lu ", rbuf);
+    write(connfd, wbuf.c_str(), wbuf.length());
 }
 
 int main(void){
