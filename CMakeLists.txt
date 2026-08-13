@@ -7,3 +7,8 @@ add_executable(redis-clone
     src/main.cpp
 )
 target_include_directories(redis-clone PRIVATE src)
+
+add_executable(server-test
+    src/server_test.cpp
+)
+target_include_directories(server-test PRIVATE src)
