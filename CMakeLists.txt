@@ -15,6 +15,18 @@ add_executable(redis-clone
 )
 target_include_directories(redis-clone PRIVATE src)
 
+#server_dev
+add_executable(redis-server
+    src/server.c
+)
+target_include_directories(redis-server PRIVATE src)
+
+#client_dev
+add_executable(redis-client
+    src/client.c
+)
+target_include_directories(redis-client PRIVATE src)
+
 # Legacy C++ prototype, kept for reference, excluded from default build
 add_executable(legacy-server-test EXCLUDE_FROM_ALL
     legacy_cpp/server_test.cpp
