@@ -4,30 +4,28 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include "CoreDebug.h"
 
 #define PORT 3333
 
-void reportErrorMessage(char *str, u_int16_t end){
-    printf("Error -> %s\n", str);
-    if(end == 1){
-        printf("Aborted!\n");
-        abort();
-    }
-}
-
-static void do_something(int connfd){
-    char read_buff[64] = {};
-    ssize_t n = read(connfd, read_buff, sizeof(read_buff)-1);
-    if(n<0){
-        reportErrorMessage("read() err!",0);
-        return;
-    }
-    printf("Client Message : %s\n", read_buff);
+// static void do_something(int connfd){
+//     char read_buff[64] = {};
+//     ssize_t n = read(connfd, read_buff, sizeof(read_buff)-1);
+//     if(n<0){
+//         reportErrorMessage("read() err!",0);
+//         return;
+//     }
+//     printf("Client Message : %s\n", read_buff);
 
 
-    //write to client
-    char w_buff[] = "hi this is server!";
-    write(connfd, w_buff, strlen(w_buff));
+//     //write to client
+//     char w_buff[] = "hi this is server!";
+//     write(connfd, w_buff, strlen(w_buff));
+// }
+
+static int32_t one_request(int connfd){
+    
+    return 0;
 }
 
 int main(void){
@@ -64,7 +62,13 @@ int main(void){
         socklen_t socklen = sizeof(client_addr);
         int connfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);
         if(connfd < 0) continue;
-        do_something(connfd);
+        
+        //do_something(connfd);
+        while(1){
+            int32_t err = one_request(connfd);
+            if(err) break;
+        }
+
         close(connfd);  
     }
 

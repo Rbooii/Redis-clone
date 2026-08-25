@@ -4,14 +4,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
-
-void reportErrorMessage(char *str, u_int16_t end){
-    printf("Error -> %s\n", str);
-    if(end == 1){
-        printf("Aborted!\n");
-        abort();
-    }
-}
+#include "CoreDebug.h"
 
 int main(int argc, char *argv[]){
     // args -> [1] *server port to connect;
