@@ -4,28 +4,75 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <assert.h>
+#include <errno.h>
 #include "CoreDebug.h"
+#include "CoreIO.h"
 
 #define PORT 3333
+#define MAX_MESSAGE_LEN 4096
 
-// static void do_something(int connfd){
-//     char read_buff[64] = {};
-//     ssize_t n = read(connfd, read_buff, sizeof(read_buff)-1);
-//     if(n<0){
-//         reportErrorMessage("read() err!",0);
-//         return;
-//     }
-//     printf("Client Message : %s\n", read_buff);
+/* Legacy-code
+static void do_something(int connfd){
+    char read_buff[64] = {};
+    ssize_t n = read(connfd, read_buff, sizeof(read_buff)-1);
+    if(n<0){
+        reportErrorMessage("read() err!",0);
+        return;
+    }
+    printf("Client Message : %s\n", read_buff);
+    //write to client
+    char w_buff[] = "hi this is server!";
+    write(connfd, w_buff, strlen(w_buff));
+}
+*/
 
-
-//     //write to client
-//     char w_buff[] = "hi this is server!";
-//     write(connfd, w_buff, strlen(w_buff));
-// }
-
+/*
+    disini pakai protokol stream data seperti berikut :
+    [panjang msg-1 (4byte)][msg-1][panjang msg-n (4byte)][msg-n][...]
+    4byte -> little endian
+*/
 static int32_t one_request(int connfd){
-    
-    return 0;
+    char read_buff[4+MAX_MESSAGE_LEN+1] = {}; //+1 for \0 "end of string/char*[]"  
+    errno = 0;
+
+    //read 4 byte header defining -> message len
+    int32_t err = read_full(connfd, read_buff, 4);
+    if(err){
+        if(errno == 0){
+            reportErrorMessage("EOF", 0);
+        }else{
+            reportErrorMessage("read stream error", 0);
+        }
+        return err;
+    }
+
+    //copy message len and validate to the max message
+    uint32_t message_len = 0;
+    memcpy(&message_len, read_buff, 4);
+    if(message_len > MAX_MESSAGE_LEN){
+        reportErrorMessage("Message stream too long",0);
+        return -1;
+    }
+
+    //actually read the body message stream by knowing len
+    err = read_full(connfd, &read_buff[4], message_len);
+    if(err){
+        reportErrorMessage("Error while reading Message Stream", 0);
+        return err;
+    }
+
+    //do something with incoming data from client
+    read_buff[4+message_len] = '\0'; //end string
+    printf("Message From Client : %s\n", read_buff);
+
+    //reply client / confirm
+    const char reply[] = "Hi client! this is server confirming!";
+    char write_buffer[4+sizeof(reply)];
+    message_len = (uint32_t)strlen(reply);
+    memcpy(write_buffer, &message_len, 4);
+    memcpy(&write_buffer[4], reply, message_len);
+    return write_full(connfd, write_buffer, message_len + 4);
 }
 
 int main(void){

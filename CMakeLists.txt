@@ -12,20 +12,25 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Active project — pure C
 add_executable(redis-clone
     src/main.c
+    src/utils/CoreDebug.c
 )
-target_include_directories(redis-clone PRIVATE src)
+target_include_directories(redis-clone PRIVATE src src/utils)
 
 #server_dev
 add_executable(redis-server
     src/server.c
+    src/utils/CoreDebug.c
+    src/utils/CoreIO.c
 )
-target_include_directories(redis-server PRIVATE src)
+target_include_directories(redis-server PRIVATE src src/utils)
 
 #client_dev
 add_executable(redis-client
     src/client.c
+    src/utils/CoreDebug.c
+    src/utils/CoreIO.c
 )
-target_include_directories(redis-client PRIVATE src)
+target_include_directories(redis-client PRIVATE src src/utils)
 
 # Legacy C++ prototype, kept for reference, excluded from default build
 add_executable(legacy-server-test EXCLUDE_FROM_ALL

@@ -5,6 +5,7 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include "CoreDebug.h"
+#include "CoreIO.h"
 
 int main(int argc, char *argv[]){
     // args -> [1] *server port to connect;
