@@ -14,8 +14,6 @@ Working on the request-response protocol chapter: reading and writing length-pre
 
 Before this, a basic blocking TCP server was built that accepts one connection at a time using raw sockets (`socket`, `bind`, `listen`, `accept`).
 
-```
-
 The `legacy_cpp` files aren't compiled by default, but they're still tracked by CMake so the editor's language server doesn't flag them with errors.
 
 ## Requirements
