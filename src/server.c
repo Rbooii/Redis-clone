@@ -40,7 +40,7 @@ static int32_t one_request(int connfd){
     int32_t err = read_full(connfd, read_buff, 4);
     if(err){
         if(errno == 0){
-            reportErrorMessage("EOF", 0);
+            reportMessageNonError("EOF/DISCONNECT");
         }else{
             reportErrorMessage("read stream error", 0);
         }
@@ -64,7 +64,7 @@ static int32_t one_request(int connfd){
 
     //do something with incoming data from client
     read_buff[4+message_len] = '\0'; //end string
-    printf("Message From Client : %s\n", read_buff);
+    printf("Message From Client : %s\n", &read_buff[4]);
 
     //reply client / confirm
     const char reply[] = "Hi client! this is server confirming!";

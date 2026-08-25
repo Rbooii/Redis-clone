@@ -9,3 +9,7 @@ void reportErrorMessage(char *str, uint16_t end){
         abort();
     }
 }
+
+void reportMessageNonError(char *str){
+    printf("%s\n", str);
+}

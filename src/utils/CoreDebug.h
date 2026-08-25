@@ -4,5 +4,6 @@
 #include <stdint.h> 
 
 void reportErrorMessage(char *str, uint16_t end);
+void reportMessageNonError(char *str);
 
 #endif
