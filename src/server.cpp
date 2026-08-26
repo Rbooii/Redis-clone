@@ -6,32 +6,54 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
-#include "CoreDebug.h"
-#include "CoreIO.h"
+#include <fcntl.h>
+
+//Core-Header -> written
+#include "CoreDebug.hpp"
+#include "CoreIO.hpp"
 
 #define PORT 3333
 #define MAX_MESSAGE_LEN 4096
 
-/* Legacy-code
-static void do_something(int connfd){
-    char read_buff[64] = {};
-    ssize_t n = read(connfd, read_buff, sizeof(read_buff)-1);
-    if(n<0){
-        reportErrorMessage("read() err!",0);
+enum {
+    STATE_REQ = 0,
+    STATE_RES = 1,
+    STATE_END = 2,
+};
+
+typedef struct Conn {
+    int fd;
+    uint32_t state;
+    size_t rbuf_size;
+    uint8_t rbuf[4+MAX_MESSAGE_LEN];
+    size_t wbuf_size;
+    size_t wbuf_sent;
+    uint8_t wbuf[4+MAX_MESSAGE_LEN];
+} Conn ;
+
+
+/*
+    function yang merubah fd dari blocking -> nonblocking mode
+*/
+static void fd_set_nb(int fd){
+    errno = 0;
+    int flags = fcntl(fd, F_GETFL, 0);
+    if(errno){
+        reportErrorMessage("fcntl error", 1);
         return;
     }
-    printf("Client Message : %s\n", read_buff);
-    //write to client
-    char w_buff[] = "hi this is server!";
-    write(connfd, w_buff, strlen(w_buff));
+    flags |= O_NONBLOCK; //bitwise or
+    errno = 0;
+    (void)fcntl(fd, F_SETFL, flags);
+    if(errno) reportErrorMessage("fcntl error", 1);
 }
-*/
 
 /*
     disini pakai protokol stream data seperti berikut :
     [panjang msg-1 (4byte)][msg-1][panjang msg-n (4byte)][msg-n][...]
     4byte -> little endian
 */
+
 static int32_t one_request(int connfd){
     char read_buff[4+MAX_MESSAGE_LEN+1] = {}; //+1 for \0 "end of string/char*[]"  
     errno = 0;

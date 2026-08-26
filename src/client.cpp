@@ -5,8 +5,8 @@
 #include <netinet/in.h>
 #include <unistd.h>
 #include <errno.h>
-#include "CoreDebug.h"
-#include "CoreIO.h"
+#include "CoreDebug.hpp"
+#include "CoreIO.hpp"
 
 #define MAX_MESSAGE_LEN 4096
 /*
