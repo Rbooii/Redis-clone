@@ -6,7 +6,7 @@ A small in-memory key-value store built from scratch in C, inspired by Redis. Th
 
 I wanted to go past "using" Redis and actually build something that behaves like it. The goal isn't to replace Redis, it's to understand the pieces: how key-value storage works with a hash map, how TCP sockets accept and read client connections, and how a single-threaded event loop can handle many clients without spawning a thread per connection (the same core idea Redis itself uses).
 
-The project started in C++ as a way to practice OOP while learning networking, but the guide this project follows ([build-your-own.org/redis](https://build-your-own.org/redis/)) is written in C, and translating every chapter added overhead that got in the way of actually learning the material. So the project moved to plain C to follow the guide more directly. The original C++ version (a `Store` class with set/get/del, plus early raw socket experiments) is kept in `legacy_cpp/` for reference.
+The project started in C++ as a way to practice OOP while learning networking, but the guide this project follows ([build-your-own.org/redis](https://build-your-own.org/redis/)) 
 
 ## Current state
 
@@ -18,7 +18,7 @@ The `legacy_cpp` files aren't compiled by default, but they're still tracked by 
 
 ## Requirements
 
-- A C compiler with C11 support or newer. `clang` works fine.
+- A C++ compiler with C++17 support or newer. `clang++` works fine.
 - CMake 3.20 or newer
 
 On macOS, both can be installed with Homebrew:
@@ -35,15 +35,14 @@ cmake --build build
 ./build/redis-clone
 ```
 
+
 - `cmake -B build` generates the build files. You only need to rerun this if `CMakeLists.txt` changes.
 - `cmake --build build` compiles the project. Run this every time you change the code.
 - `./build/redis-clone` runs the compiled binary.
 
-If you want to recompile the old C++ prototype for reference:
+or simpy just run
+`make` or `make full`
 
-```bash
-cmake --build build --target legacy-server-test
-```
 
 ## Roadmap
 
