@@ -2,7 +2,7 @@
 #include <stdio.h>     
 #include <stdlib.h>   
 
-void reportErrorMessage(char *str, uint16_t end){
+void reportErrorMessage(const char *str, uint16_t end){
     printf("Error -> %s\n", str);
     if(end == 1){
         printf("Aborted!\n");
@@ -10,6 +10,6 @@ void reportErrorMessage(char *str, uint16_t end){
     }
 }
 
-void reportMessageNonError(char *str){
-    printf("%s\n", str);
+void reportMessageNonError(const char *str){
+    printf("Message -> %s\n", str);
 }

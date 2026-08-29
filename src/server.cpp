@@ -7,95 +7,20 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <vector>
+#include <poll.h>
 
 //Core-Header -> written
 #include "CoreDebug.hpp"
 #include "CoreIO.hpp"
 
 #define PORT 3333
-#define MAX_MESSAGE_LEN 4096
-
-enum {
-    STATE_REQ = 0,
-    STATE_RES = 1,
-    STATE_END = 2,
-};
-
-typedef struct Conn {
-    int fd;
-    uint32_t state;
-    size_t rbuf_size;
-    uint8_t rbuf[4+MAX_MESSAGE_LEN];
-    size_t wbuf_size;
-    size_t wbuf_sent;
-    uint8_t wbuf[4+MAX_MESSAGE_LEN];
-} Conn ;
-
-
-/*
-    function yang merubah fd dari blocking -> nonblocking mode
-*/
-static void fd_set_nb(int fd){
-    errno = 0;
-    int flags = fcntl(fd, F_GETFL, 0);
-    if(errno){
-        reportErrorMessage("fcntl error", 1);
-        return;
-    }
-    flags |= O_NONBLOCK; //bitwise or
-    errno = 0;
-    (void)fcntl(fd, F_SETFL, flags);
-    if(errno) reportErrorMessage("fcntl error", 1);
-}
 
 /*
     disini pakai protokol stream data seperti berikut :
     [panjang msg-1 (4byte)][msg-1][panjang msg-n (4byte)][msg-n][...]
     4byte -> little endian
 */
-
-static int32_t one_request(int connfd){
-    char read_buff[4+MAX_MESSAGE_LEN+1] = {}; //+1 for \0 "end of string/char*[]"  
-    errno = 0;
-
-    //read 4 byte header defining -> message len
-    int32_t err = read_full(connfd, read_buff, 4);
-    if(err){
-        if(errno == 0){
-            reportMessageNonError("EOF/DISCONNECT");
-        }else{
-            reportErrorMessage("read stream error", 0);
-        }
-        return err;
-    }
-
-    //copy message len and validate to the max message
-    uint32_t message_len = 0;
-    memcpy(&message_len, read_buff, 4);
-    if(message_len > MAX_MESSAGE_LEN){
-        reportErrorMessage("Message stream too long",0);
-        return -1;
-    }
-
-    //actually read the body message stream by knowing len
-    err = read_full(connfd, &read_buff[4], message_len);
-    if(err){
-        reportErrorMessage("Error while reading Message Stream", 0);
-        return err;
-    }
-
-    //do something with incoming data from client
-    read_buff[4+message_len] = '\0'; //end string
-    printf("Message From Client : %s\n", &read_buff[4]);
-
-    //reply client / confirm
-    const char reply[] = "Hi client! this is server confirming!";
-    char write_buffer[4+sizeof(reply)];
-    message_len = (uint32_t)strlen(reply);
-    memcpy(write_buffer, &message_len, 4);
-    memcpy(&write_buffer[4], reply, message_len);
-    return write_full(connfd, write_buffer, message_len + 4);
-}
 
 int main(void){
     printf("Server code running at port:%d...\n", PORT);
@@ -125,22 +50,46 @@ int main(void){
     rv = listen(fd, SOMAXCONN);
     if(rv) reportErrorMessage("Failed to Listen", 1);
 
-    //accept client connection loop
+    std::vector<Conn *> fd2conn;
+    fd_set_nb(fd); // -> setting fd to non blocking mode
+
+    //event loop
+    std::vector<struct pollfd> poll_args;
     while(1){
-        struct sockaddr_in client_addr = {};
-        socklen_t socklen = sizeof(client_addr);
-        int connfd = accept(fd, (struct sockaddr *)&client_addr, &socklen);
-        if(connfd < 0) continue;
-        
-        //do_something(connfd);
-        while(1){
-            int32_t err = one_request(connfd);
-            if(err) break;
+        poll_args.clear();
+        struct pollfd pfd = {fd, POLLIN, 0};
+        poll_args.push_back(pfd);
+
+        for(Conn *conn : fd2conn){
+            if(!conn) continue;
+            struct pollfd pfd = {};
+            pfd.fd  = conn->fd;
+            pfd.events = (conn->state == STATE_REQ) ? POLLIN : POLLOUT;
+            pfd.events = pfd.events | POLLERR;
+            poll_args.push_back(pfd);
         }
 
-        close(connfd);  
+        //poll untuk fd(s) yang aktif
+        int rv = poll(poll_args.data(), (nfds_t)poll_args.size(), 1000);
+        if(rv < 0){
+            reportErrorMessage("Poll Error at Event Loop", 1);
+        }
+
+        //process active connection
+        for(size_t i = 1; i < poll_args.size(); ++i){
+            if(poll_args[i].revents){
+                Conn *conn = fd2conn[poll_args[i].fd];
+                connection_io(conn);
+                if(conn->state == STATE_END){
+                    fd2conn[conn->fd] = NULL;
+                    (void)close(conn->fd);
+                    delete(conn);
+                }
+            }
+        }
+        if(poll_args[0].revents)(void)accept_new_conn(fd2conn, fd);
     }
 
-    close(fd);
+    //close(fd);
     return 0;
 }
