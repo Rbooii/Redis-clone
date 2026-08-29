@@ -1,6 +1,6 @@
 # Redis Clone
 
-A small in-memory key-value store built from scratch in C, inspired by Redis. This is a learning project focused on understanding how a database like Redis actually works under the hood: storage, hashing, networking, and the event loop that ties it all together.
+A small in-memory key-value store built from scratch in C++, inspired by Redis. This is a learning project focused on understanding how a database like Redis actually works under the hood: storage, hashing, networking, and the event loop that ties it all together.
 
 ## Why this exists
 
@@ -10,11 +10,11 @@ The project started in C++ as a way to practice OOP while learning networking, b
 
 ## Current state
 
-Working on the request-response protocol chapter: reading and writing length-prefixed messages over a TCP connection (a 4-byte length header followed by the payload), so the server always knows exactly how many bytes to read instead of guessing.
+Successfully implemented an asynchronous, non-blocking TCP server using an Event-Driven architecture with poll(). The server now uses a State Machine (STATE_REQ, STATE_RES) to handle read and write buffers for multiple concurrent clients without blocking.
 
-Before this, a basic blocking TCP server was built that accepts one connection at a time using raw sockets (`socket`, `bind`, `listen`, `accept`).
+A length-prefixed message protocol (a 4-byte header followed by the payload) is actively used to stream data efficiently.
 
-The `legacy_cpp` files aren't compiled by default, but they're still tracked by CMake so the editor's language server doesn't flag them with errors.
+Currently, the server acts as an Echo Server, reflecting client messages perfectly. The next step is to implement a command parser to actually process Redis-like commands.
 
 ## Requirements
 
@@ -47,9 +47,9 @@ or simpy just run
 ## Roadmap
 
 - [x] In-memory key-value store with set/get/del (originally C++, later reimplemented in C)
-- [ ] TCP server using raw sockets
-- [ ] Request-response protocol (length-prefixed messages)
-- [ ] Event loop for handling multiple clients
+- [x] TCP server using raw sockets
+- [x] Request-response protocol (length-prefixed messages)
+- [x] Event loop for handling multiple clients
 - [ ] Basic command protocol (parsing text commands from clients and rewrite c++ -> c)
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)
