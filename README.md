@@ -1,4 +1,4 @@
-# Redis Clone
+# Redix
 
 A small in-memory key-value store built from scratch in C++, inspired by Redis. This is a learning project focused on understanding how a database like Redis actually works under the hood: storage, hashing, networking, and the event loop that ties it all together.
 
@@ -50,6 +50,6 @@ or simpy just run
 - [x] TCP server using raw sockets
 - [x] Request-response protocol (length-prefixed messages)
 - [x] Event loop for handling multiple clients
-- [ ] Basic command protocol (parsing text commands from clients streams)
+- [x] Basic command protocol (parsing text commands from clients streams)
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)
