@@ -50,6 +50,6 @@ or simpy just run
 - [x] TCP server using raw sockets
 - [x] Request-response protocol (length-prefixed messages)
 - [x] Event loop for handling multiple clients
-- [ ] Basic command protocol (parsing text commands from clients and rewrite c++ -> c)
+- [ ] Basic command protocol (parsing text commands from clients streams)
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)

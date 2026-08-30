@@ -11,6 +11,11 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include <vector>
+#include <unordered_map>
+#include <sstream>
+#include <string>
+
 /*
     read size byte -> n;
     read byte stream is transfered by read buffer pointer -> *buf
@@ -96,6 +101,36 @@ void state_req(Conn *conn){
     while(try_fill_buffer(conn)){}
 }
 
+//placeholder map for storing data in memory
+static std::unordered_map<std::string, std::string> db;
+//literally ambil -> set nama arco -> ['set', 'nama', 'arco'] as Vector string
+static std::vector<std::string> cmd_parse(const std::string &req){
+    std::vector<std::string> tokens;
+    std::stringstream ss(req);
+    std::string word;
+    while(ss>>word){
+        tokens.push_back(word);
+    }
+    return tokens;
+}
+static std::string cmd_exec(const std::vector<std::string> &parsed_cmd){
+    if(parsed_cmd.empty()) return "EMPTY";
+    const std::string &db_operand = parsed_cmd[0]; //get,set,del 
+    if(db_operand == "set" && parsed_cmd.size() == 3){
+        db[parsed_cmd[1]] = parsed_cmd[2];
+        return "OK SET ";
+    }else if(db_operand == "get" && parsed_cmd.size() == 2){
+        auto q = db.find(parsed_cmd[1]);
+        if(q != db.end()) return q->second;
+        return "NULL";
+    }else if(db_operand == "del" && parsed_cmd.size() == 2){
+        bool delQ = db.erase(parsed_cmd[1]);
+        return (delQ) ? "1" : "0";
+    }else{
+        return "ERR";
+    }
+}
+
 bool try_one_req(Conn *conn){
     if(conn->rbuf_size < 4) return false; //not enough byte even for message info
     uint32_t len = 0;
@@ -108,10 +143,14 @@ bool try_one_req(Conn *conn){
     if(4+len > conn->rbuf_size) return false; //message di buffer belum lengkap lanjut next iter
     printf("client Says : %.*s\n", len, &conn->rbuf[4]); // message buffer lengkap sizenya sama ama 4+len print message
 
-    //echo msg
-    memcpy(&conn->wbuf[0], &len, 4);
-    memcpy(&conn->wbuf[4], &conn->rbuf[4], len);
-    conn->wbuf_size = 4 + len;
+    std::string req_text((char*)&conn->rbuf[4], len);
+    std::vector<std::string> cmd = cmd_parse(req_text);
+    std::string res_text = cmd_exec(cmd);
+    
+    uint32_t res_len = (uint32_t)res_text.size();
+    memcpy(&conn->wbuf[0], &res_len, 4);                  
+    memcpy(&conn->wbuf[4], res_text.data(), res_len);     
+    conn->wbuf_size = 4 + res_len;
 
     size_t remain = conn->rbuf_size - 4 - len;
     if(remain){
