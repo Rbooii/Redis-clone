@@ -51,5 +51,6 @@ or simpy just run
 - [x] Request-response protocol (length-prefixed messages)
 - [x] Event loop for handling multiple clients
 - [x] Basic command protocol (parsing text commands from clients streams)
+- [ ] Implemet Data structures (hashmap and AVL) for stroing key and values efficiently
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)

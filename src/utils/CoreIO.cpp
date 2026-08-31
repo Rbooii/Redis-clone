@@ -1,5 +1,6 @@
 #include "CoreDebug.hpp"
 #include "CoreIO.hpp"
+#include "CoreDB.hpp"
 
 #include <unistd.h> 
 #include <assert.h>
@@ -101,35 +102,7 @@ void state_req(Conn *conn){
     while(try_fill_buffer(conn)){}
 }
 
-//placeholder map for storing data in memory
-static std::unordered_map<std::string, std::string> db;
-//literally ambil -> set nama arco -> ['set', 'nama', 'arco'] as Vector string
-static std::vector<std::string> cmd_parse(const std::string &req){
-    std::vector<std::string> tokens;
-    std::stringstream ss(req);
-    std::string word;
-    while(ss>>word){
-        tokens.push_back(word);
-    }
-    return tokens;
-}
-static std::string cmd_exec(const std::vector<std::string> &parsed_cmd){
-    if(parsed_cmd.empty()) return "EMPTY";
-    const std::string &db_operand = parsed_cmd[0]; //get,set,del 
-    if(db_operand == "set" && parsed_cmd.size() == 3){
-        db[parsed_cmd[1]] = parsed_cmd[2];
-        return "OK SET ";
-    }else if(db_operand == "get" && parsed_cmd.size() == 2){
-        auto q = db.find(parsed_cmd[1]);
-        if(q != db.end()) return q->second;
-        return "NULL";
-    }else if(db_operand == "del" && parsed_cmd.size() == 2){
-        bool delQ = db.erase(parsed_cmd[1]);
-        return (delQ) ? "1" : "0";
-    }else{
-        return "ERR";
-    }
-}
+
 
 bool try_one_req(Conn *conn){
     if(conn->rbuf_size < 4) return false; //not enough byte even for message info

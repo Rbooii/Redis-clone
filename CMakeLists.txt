@@ -21,6 +21,7 @@ add_executable(redis-server
     src/server.cpp
     src/utils/CoreDebug.cpp
     src/utils/CoreIO.cpp
+    src/utils/CoreDB.cpp
 )
 target_include_directories(redis-server PRIVATE src src/utils)
 
@@ -29,6 +30,7 @@ add_executable(redis-client
     src/client.cpp
     src/utils/CoreDebug.cpp
     src/utils/CoreIO.cpp
+    src/utils/CoreDB.cpp
 )
 target_include_directories(redis-client PRIVATE src src/utils)
 
