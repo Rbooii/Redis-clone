@@ -28,11 +28,6 @@ size_t hash_func(const std::string &key, size_t CAP){
     return std::hash<std::string>{}(key) % CAP;
 };
 
-void Insert(const std::string &key, const std::string &val){
-    size_t hash_key = hash_func(key, db_hash.CAP);
-    db_hash.table[hash_key] = pushNode(&db_hash.table[hash_key], key, val);
-}
-
 Node *Search_hash(const std::string &key) {
     size_t hash_key = hash_func(key, db_hash.CAP);
     if(db_hash.table.at(hash_key) == nullptr) return NULL;
@@ -49,6 +44,32 @@ Node *Search_hash(const std::string &key) {
     }
     return NULL;
 }
+
+// 0 -> error
+// 1 -> set
+// 2 -> update
+// 3 -> still
+int Insert(const std::string &key, const std::string &val){
+    size_t hash_key = hash_func(key, db_hash.CAP);
+    
+    Node *check = Search_hash(key);
+    if(check){
+        //misal udah ada nodenya
+        if(check->value != val){
+            //misal key ada tapi value beda sama command, jadinya mau di update
+            check->value = val;
+            return 2;
+        }else{
+            return 3;
+        }
+    }else{
+        db_hash.table[hash_key] = pushNode(&db_hash.table[hash_key], key, val); 
+        return 1;
+    }
+    return 0; 
+}
+
+
 
 bool Delete(const std::string &key){
     size_t h_k = hash_func(key, db_hash.CAP);
@@ -87,8 +108,11 @@ std::string cmd_exec(const std::vector<std::string> &parsed_cmd){
     if(parsed_cmd.empty()) return "EMPTY";
     const std::string &db_operand = parsed_cmd[0]; //get,set,del 
     if(db_operand == "set" && parsed_cmd.size() == 3){
-        Insert(parsed_cmd[1], parsed_cmd[2]);        
-        return "OK SET ";
+        int q = Insert(parsed_cmd[1], parsed_cmd[2]);        
+        if(q == 1){return "OK SET";}
+        else if(q==2){return "OK UPDATE";}
+        else if(q==3){return "OK STILL";}
+        else return "ERR";
     }else if(db_operand == "get" && parsed_cmd.size() == 2){
         Node *q = Search_hash(parsed_cmd[1]);
         if(q){
