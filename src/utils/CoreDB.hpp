@@ -18,7 +18,7 @@ typedef struct HashTable {
 } Hashtable;
 
 Node *CreateNode(std::string key, std::string val);
-void pushNode(Node **chain, std::string key, std::string val);
+Node *pushNode(Node **chain, std::string key, std::string val);
 void InitHash();
 size_t hash_func(const std::string &key, size_t CAP);
 void Insert(std::string &key, std::string &val);

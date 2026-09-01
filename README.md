@@ -6,7 +6,7 @@ A small in-memory key-value store built from scratch in C++, inspired by Redis. 
 
 I wanted to go past "using" Redis and actually build something that behaves like it. The goal isn't to replace Redis, it's to understand the pieces: how key-value storage works with a hash map, how TCP sockets accept and read client connections, and how a single-threaded event loop can handle many clients without spawning a thread per connection (the same core idea Redis itself uses).
 
-The project started in C++ as a way to practice OOP while learning networking, but the guide this project follows ([build-your-own.org/redis](https://build-your-own.org/redis/)) 
+The project started in C++ as a way to practice OOP while learning networking, but the guide this project follows ([build-your-own.org/redis](https://build-your-own.org/redis/)) but i only follow it for the networking thing, for the coreDB/ The data structures. im pretty much on my own lol.
 
 ## Current state
 
@@ -51,6 +51,6 @@ or simpy just run
 - [x] Request-response protocol (length-prefixed messages)
 - [x] Event loop for handling multiple clients
 - [x] Basic command protocol (parsing text commands from clients streams)
-- [ ] Implemet Data structures (hashmap and AVL) for stroing key and values efficiently
+- [x] Implement Data structures (hashmap) for stroing key and values efficiently
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)

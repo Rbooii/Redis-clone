@@ -11,19 +11,15 @@ Node *CreateNode(std::string key, std::string val){
     return x;
 };
 
-void pushNode(Node **chain, std::string key, std::string val){
+// change into push -> Head
+Node *pushNode(Node **chain, std::string key, std::string val){
     Node *newNode = CreateNode(key, val);
     if(!(*chain))
     {
-        (*chain) = newNode;
-        return;
+        return newNode;
     }
-    Node *current = (*chain); 
-    while(current->next){
-        current = current->next;
-    }
-    current->next = newNode;
-    return;
+    newNode->next = (*chain);
+    return newNode;
 };
 
 void InitHash(){}
@@ -34,7 +30,7 @@ size_t hash_func(const std::string &key, size_t CAP){
 
 void Insert(const std::string &key, const std::string &val){
     size_t hash_key = hash_func(key, db_hash.CAP);
-    pushNode(&db_hash.table[hash_key], key, val);
+    db_hash.table[hash_key] = pushNode(&db_hash.table[hash_key], key, val);
 }
 
 Node *Search_hash(const std::string &key) {
@@ -55,12 +51,25 @@ Node *Search_hash(const std::string &key) {
 }
 
 bool Delete(const std::string &key){
-    Node *x = Search_hash(key);
-    if(!x){ 
-        return false;
+    size_t h_k = hash_func(key, db_hash.CAP);
+    if(!db_hash.table[h_k]) return false;
+    Node *curr = db_hash.table[h_k];
+    Node *prev = nullptr;
+    while(curr && curr->key != key){
+        prev = curr;
+        curr = curr->next;
     }
+    if(!curr) return false;
 
+    //if head
+    if(prev == nullptr){
+        db_hash.table[h_k] = curr->next;
+    }else{
+        prev->next = curr->next;
+    }
     
+    delete curr;
+    return true;
 }
 
 //literally ambil -> set nama arco -> ['set', 'nama', 'arco'] as Vector string
@@ -90,6 +99,9 @@ std::string cmd_exec(const std::vector<std::string> &parsed_cmd){
     }else if(db_operand == "del" && parsed_cmd.size() == 2){
         // bool delQ = db.erase(parsed_cmd[1]);
         // return (delQ) ? "1" : "0";
+
+        bool del_query = Delete(parsed_cmd[1]);
+        return del_query ? "OK DELETE" : "NIL";
     }else{
         return "ERR";
     }
