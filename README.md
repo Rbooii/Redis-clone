@@ -10,11 +10,7 @@ The project started in C++ as a way to practice OOP while learning networking, b
 
 ## Current state
 
-Successfully implemented an asynchronous, non-blocking TCP server using an Event-Driven architecture with poll(). The server now uses a State Machine (STATE_REQ, STATE_RES) to handle read and write buffers for multiple concurrent clients without blocking.
-
-A length-prefixed message protocol (a 4-byte header followed by the payload) is actively used to stream data efficiently.
-
-Currently, the server acts as an Echo Server, reflecting client messages perfectly. The next step is to implement a command parser to actually process Redis-like commands.
+Currently, the server is fully functional for basic database operations. It parses client data streams into actionable commands and executes them against a custom-built, memory-safe Hash Map (implementing separate chaining). Supported commands currently include GET, SET, and DEL. The next step is to implement Incremental Rehashing to handle Hash Map resizing, followed by an AVL Tree for TTL/expiry features.
 
 ## Requirements
 
@@ -32,13 +28,20 @@ brew install cmake
 ```bash
 cmake -B build
 cmake --build build
-./build/redis-clone
+./build/redix -> //main binary (still development)
+```
+
+### client server run
+```bash
+make full or make
+./build/redix-server -> server binary
+./build/redix-client PORT -> client binary to connect to a specific port eg ./build/redix-client 3333
 ```
 
 
 - `cmake -B build` generates the build files. You only need to rerun this if `CMakeLists.txt` changes.
 - `cmake --build build` compiles the project. Run this every time you change the code.
-- `./build/redis-clone` runs the compiled binary.
+- `./build/redix` runs the compiled binary.
 
 or simpy just run
 `make` or `make full`
@@ -52,5 +55,6 @@ or simpy just run
 - [x] Event loop for handling multiple clients
 - [x] Basic command protocol (parsing text commands from clients streams)
 - [x] Implement Data structures (hashmap) for stroing key and values efficiently
+- [x] In-memory key-value store with SET/GET/DEL using a custom Hash Map
 - [ ] TTL / key expiry
 - [ ] Simple persistence (snapshot to disk)

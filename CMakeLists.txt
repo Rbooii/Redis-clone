@@ -9,30 +9,29 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Active project — pure C
-add_executable(redis-clone
+add_executable(redix
     src/main.cpp
     src/utils/CoreDebug.cpp
 )
-target_include_directories(redis-clone PRIVATE src src/utils)
+target_include_directories(redix PRIVATE src src/utils)
 
 #server_dev
-add_executable(redis-server
+add_executable(redix-server
     src/server.cpp
     src/utils/CoreDebug.cpp
     src/utils/CoreIO.cpp
     src/utils/CoreDB.cpp
 )
-target_include_directories(redis-server PRIVATE src src/utils)
+target_include_directories(redix-server PRIVATE src src/utils)
 
 #client_dev
-add_executable(redis-client
+add_executable(redix-client
     src/client.cpp
     src/utils/CoreDebug.cpp
     src/utils/CoreIO.cpp
     src/utils/CoreDB.cpp
 )
-target_include_directories(redis-client PRIVATE src src/utils)
+target_include_directories(redix-client PRIVATE src src/utils)
 
 # Legacy C++ prototype, kept for reference, excluded from default build
 add_executable(legacy-server-test EXCLUDE_FROM_ALL
