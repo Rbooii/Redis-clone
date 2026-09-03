@@ -1,7 +1,8 @@
 #include "CoreDB.hpp"
 #include <sstream>
 #include <stdlib.h>
-HashTable db_hash(8);
+#include <cstdio>
+db database(4);
 
 Node *CreateNode(std::string key, std::string val)
 {
@@ -11,6 +12,48 @@ Node *CreateNode(std::string key, std::string val)
   x->key = key;
   return x;
 };
+
+static bool Overload_check(HashTable *current){
+  return current->hold >= current->CAP;
+}
+
+void resize_hash_init(){
+  if(Overload_check(&database.htx[0]) && database.isMigrating == false){
+    printf("MIGRATE!\n");
+    //kalau overload mulai hash migrate
+    database.isMigrating = true;
+    size_t newCap = database.latestCAP * 2;
+    database.latestCAP = newCap;
+    database.LastMigrateIndex = 0; //init
+    HashTable ht2(newCap);
+    database.htx.push_back(ht2);
+  }
+  return;
+}
+//relink harus return head ke hash table lama
+Node *relinkNode(Node **newChain, Node *x){
+  //selalu head
+  Node *ReturnNode = x->next;
+  x->next = (*newChain);
+  (*newChain) = x;
+  return ReturnNode;
+}
+
+void rehash_one(){
+  Node *curr = database.htx[0].table[database.LastMigrateIndex];
+  database.htx[0].table[database.LastMigrateIndex] = nullptr;
+  while(curr!=nullptr){
+    size_t new_hash_key = hash_func(curr->key, database.latestCAP);
+    curr = relinkNode(&(database.htx[1].table[new_hash_key]), curr);
+  }
+  database.LastMigrateIndex++;
+  if(database.LastMigrateIndex >= database.htx[0].CAP){
+    //migrasi selesai
+    database.htx.erase(database.htx.begin());
+    database.isMigrating = false;
+    database.LastMigrateIndex = -1;
+  }
+}
 
 // change into push -> Head
 Node *pushNode(Node **chain, std::string key, std::string val)
@@ -24,8 +67,6 @@ Node *pushNode(Node **chain, std::string key, std::string val)
   return newNode;
 };
 
-void InitHash() {}
-
 size_t hash_func(const std::string &key, size_t CAP)
 {
   return std::hash<std::string>{}(key) % CAP;
@@ -33,25 +74,37 @@ size_t hash_func(const std::string &key, size_t CAP)
 
 Node *Search_hash(const std::string &key)
 {
-  size_t hash_key = hash_func(key, db_hash.CAP);
-  if (db_hash.table.at(hash_key) == nullptr)
-    return NULL;
-  int idx = 0;
-  Node *curr = db_hash.table[hash_key];
-  while (curr && curr->key != key)
-  {
-    curr = curr->next;
-    idx++;
+  if(database.isMigrating) rehash_one();
+  int check = 0; //0 -> old ht, 1-> new ht
+  while(check < ((database.isMigrating) ? 2 : 1)){
+    HashTable &x = database.htx[check];
+    size_t hash_key = hash_func(key, x.CAP);
+    if(x.table[hash_key] != nullptr){
+      //oke ada item coba cek dulu chain nya ada gak yang kita cari
+      Node *curr = x.table[hash_key];
+      while(curr && curr->key != key){
+        curr = curr->next;
+      }
+      if(!curr && check == 0){
+        //coba pindah ke table sebelah
+        check = 1;
+        continue;
+      }else if(!curr && check == 1){
+        break; // udah di table kedua dan gaada
+      }else{
+        return curr;
+        break;
+      }
+    }else if(x.table[hash_key] == nullptr && check == 0){
+      //pindah ke table kedua coba
+      check = 1;
+      continue;
+    }else{
+      //udah di table kedua dan kosong
+      break;
+    }
   }
-  if (!curr)
-  {
-    return NULL;
-  }
-  else
-  {
-    return curr;
-  }
-  return NULL;
+  return nullptr;
 }
 
 // 0 -> error
@@ -60,9 +113,14 @@ Node *Search_hash(const std::string &key)
 // 3 -> still
 int Insert(const std::string &key, const std::string &val)
 {
-  size_t hash_key = hash_func(key, db_hash.CAP);
+  if(database.isMigrating) rehash_one();
+  // kalau migrating -> ada ht 2 langsung isi disana otherwise isi ht1
+  size_t hash_key = hash_func(
+    key, 
+    (database.isMigrating) ? database.htx[1].CAP : database.htx[0].CAP
+  );
 
-  Node *check = Search_hash(key);
+  Node *check = Search_hash(key); //Search_hash(key);
   if (check)
   {
     // misal udah ada nodenya
@@ -79,7 +137,12 @@ int Insert(const std::string &key, const std::string &val)
   }
   else
   {
-    db_hash.table[hash_key] = pushNode(&db_hash.table[hash_key], key, val);
+    int mode = database.isMigrating ? 1 : 0;
+    database.htx[mode].table[hash_key] = pushNode(&database.htx[mode].table[hash_key], key, val);
+    database.htx[mode].hold++;
+    if(mode == 0){
+      resize_hash_init();
+    }
     return 1;
   }
   return 0;
@@ -87,31 +150,46 @@ int Insert(const std::string &key, const std::string &val)
 
 bool Delete(const std::string &key)
 {
-  size_t h_k = hash_func(key, db_hash.CAP);
-  if (!db_hash.table[h_k])
-    return false;
-  Node *curr = db_hash.table[h_k];
-  Node *prev = nullptr;
-  while (curr && curr->key != key)
-  {
-    prev = curr;
-    curr = curr->next;
+  if(database.isMigrating) rehash_one();
+  int check = 0; //0 -> old ht, 1-> new ht
+  while(check < ((database.isMigrating) ? 2 : 1)){
+    HashTable &x = database.htx[check];
+    size_t hash_key = hash_func(key, x.CAP);
+    if(x.table[hash_key] != nullptr){
+      //oke ada item coba cek dulu chain nya ada gak yang kita cari
+      Node *curr = x.table[hash_key];
+      Node *prev = nullptr;
+      while(curr && curr->key != key){
+        prev = curr;
+        curr = curr->next;
+      }
+      if(!curr && check == 0){
+        //coba pindah ke table sebelah
+        check = 1;
+        continue;
+      }else if(!curr && check == 1){
+        return false; // udah di table kedua dan gaada
+      }else{
+        //delete
+        if(prev == nullptr){
+          x.table[hash_key] = curr->next;
+        }else{
+          prev->next = curr->next;
+        }
+        delete curr;
+        database.htx[check].hold--;
+        return true;
+      }
+    }else if(x.table[hash_key] == nullptr && check == 0){
+      //pindah ke table kedua coba
+      check = 1;
+      continue;
+    }else{
+      //udah di table kedua dan kosong
+      return false;
+    }
   }
-  if (!curr)
-    return false;
-
-  // if head
-  if (prev == nullptr)
-  {
-    db_hash.table[h_k] = curr->next;
-  }
-  else
-  {
-    prev->next = curr->next;
-  }
-
-  delete curr;
-  return true;
+  return false;
 }
 
 // literally ambil -> set nama arco -> ['set', 'nama', 'arco'] as Vector string
@@ -153,7 +231,8 @@ std::string cmd_exec(const std::vector<std::string> &parsed_cmd)
   }
   else if (db_operand == "get" && parsed_cmd.size() == 2)
   {
-    Node *q = Search_hash(parsed_cmd[1]);
+    Node *q =  Search_hash(parsed_cmd[1]);
+
     if (q)
     {
       return q->value;

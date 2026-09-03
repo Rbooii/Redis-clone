@@ -13,19 +13,31 @@ typedef struct Node {
 
 typedef struct HashTable {
     size_t CAP;
+    size_t hold = 0;
     std::vector<Node*> table;
     HashTable(size_t cap) : CAP(cap), table(cap, nullptr) {};
 } Hashtable;
 
+typedef struct db {
+    size_t latestCAP;
+    std::vector<HashTable> htx;
+    bool isMigrating = false;
+    int LastMigrateIndex = -1;
+    db(size_t f_cap) : latestCAP(f_cap), htx(1, latestCAP){};
+} db;
+
 Node *CreateNode(std::string key, std::string val);
 Node *pushNode(Node **chain, std::string key, std::string val);
-void InitHash();
+Node *relinkNode(Node **newChain, Node *x);
 size_t hash_func(const std::string &key, size_t CAP);
-int Insert(std::string &key, std::string &val);
-std::string Search_hash(std::string &key);
+int Insert(const std::string &key, const std::string &val);
+Node *Search_hash(const std::string &key);
 
+void InitHash();
+void resize_hash_init();
+void rehash_one();
 
-extern HashTable db_hash;
+extern db database;
 
 //placeholder map for storing data in memory
 //static std::unordered_map<std::string, std::string> db;
