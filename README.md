@@ -1,4 +1,6 @@
 # Redix
+<img src="./readme-assets/redix-logo-dark.png" width="100" height="100" alt="redix logo">
+
 
 A small in-memory key-value store built from scratch in C++, inspired by Redis. This is a learning project focused on understanding how a database like Redis actually works under the hood: storage, hashing, networking, and the event loop that ties it all together.
 
