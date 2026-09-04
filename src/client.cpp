@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
+#include <vector>
+#include <sstream>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -27,48 +29,55 @@ LEGACY REQ-RES CODE
     printf("Server Message : %s\n", read_buff);
 */
 
-static int32_t query(int fd, const char *text){
-    uint32_t message_len = (uint32_t)strlen(text);
-    if(message_len > MAX_MESSAGE_LEN) return -1;
-    char write_buff[4+MAX_MESSAGE_LEN];
-    memcpy(write_buff, &message_len, 4); //attach 4 byte header
-    memcpy(&write_buff[4], text, message_len); //attach message body
+std::string plain_to_resp(const std::string &input) {
+    std::vector<std::string> tokens;
+    std::stringstream ss(input);
+    std::string word;
     
-    int32_t err = write_full(fd, write_buff, message_len+4);
-    if(err){
+    while (ss >> word) {
+        tokens.push_back(word);
+    }
+    
+    if (tokens.empty()) return "";
+    std::string resp = "*" + std::to_string(tokens.size()) + "\r\n";
+    
+    // Bungkus setiap kata jadi Bulk String ($<panjang_kata>\r\n<kata>\r\n)
+    for (const std::string &token : tokens) {
+        resp += "$" + std::to_string(token.length()) + "\r\n" + token + "\r\n";
+    }
+    
+    return resp;
+}
+
+static int32_t query(int fd, const char *text) {
+    std::string resp_msg = plain_to_resp(text);
+    if (resp_msg.empty()) return 0;
+    
+    if (resp_msg.size() > MAX_MESSAGE_LEN) {
+        reportErrorMessage("Message stream too long", 0);
+        return -1;
+    }
+
+    int32_t err = write_full(fd, (char*)resp_msg.c_str(), resp_msg.size());
+    if (err) {
         reportErrorMessage("Error sending message to server", 0);
         return err;
     }
 
-    char read_buff[4+MAX_MESSAGE_LEN+1] = {};
-    errno = 0;
-    err = read_full(fd, read_buff, 4);
-    if(err){
-        if(errno == 0){
-            reportErrorMessage("EOF", 0);
-        }else{
-            reportErrorMessage("read stream error", 0);
-        }
-        return err;
-    }
-    //copy message len and validate to the max message
-    message_len = 0;
-    memcpy(&message_len, read_buff, 4);
-    if(message_len > MAX_MESSAGE_LEN){
-        reportErrorMessage("Message stream too long",0);
+    char read_buff[MAX_MESSAGE_LEN + 1] = {};
+    ssize_t n = read(fd, read_buff, sizeof(read_buff) - 1);
+    
+    if (n < 0) {
+        reportErrorMessage("read stream error", 0);
+        return -1;
+    } else if (n == 0) {
+        reportErrorMessage("EOF (Server Closed)", 0);
         return -1;
     }
 
-    //actually read the body message stream by knowing len
-    err = read_full(fd, &read_buff[4], message_len);
-    if(err){
-        reportErrorMessage("Error while reading Message Stream", 0);
-        return err;
-    }
-
-    //do something with incoming data from server
-    read_buff[4+message_len] = '\0'; //end string
-    printf("Message From Server : %s\n", &read_buff[4]);
+    read_buff[n] = '\0'; 
+    
+    printf("Message From Server : %s", read_buff);
     return 0;
 }
 
@@ -80,7 +89,7 @@ int main(int argc, char *argv[]){
     }
 
     int server_port = atoi(argv[1]);
-    printf("Connect to Server port -> %d \n", server_port);
+    printf("Connected to REDIX Server port -> %d \n", server_port);
 
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0) reportErrorMessage("Failed to create FD", 1);
@@ -96,7 +105,7 @@ int main(int argc, char *argv[]){
 
     while(1){
         char message[MAX_MESSAGE_LEN];
-        printf("Send Data To server : ");
+        printf("[PORT : %d] REDIX CLI > ", atoi(argv[1]));
         if (fgets(message, sizeof(message), stdin) == NULL) {
             printf("\nClient Stopped.\n");
             break; 

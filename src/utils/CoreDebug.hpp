@@ -5,5 +5,6 @@
 
 void reportErrorMessage(const char *str, uint16_t end);
 void reportMessageNonError(const char *str);
+void printASCII();
 
 #endif

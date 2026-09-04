@@ -27,6 +27,7 @@ typedef struct Conn {
 int32_t read_full(int fd, char *buf, size_t n);
 int32_t write_full(int fd, char *buf, size_t n);
 int32_t accept_new_conn(std::vector<Conn *> &fd2conn, int fd);
+int32_t parse_resp(const uint8_t *data, size_t len, std::vector<std::string> &out_cmd);
 
 void conn_put(std::vector<Conn *> &fd2conn, Conn *conn);
 void fd_set_nb(int fd);

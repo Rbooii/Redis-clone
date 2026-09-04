@@ -32,7 +32,7 @@ int main(void){
     */
     int fd = socket(AF_INET, SOCK_STREAM, 0);
     if(fd < 0) reportErrorMessage("Failed to create FD", 1);
-    printf("Socket Created!\n");
+    printASCII();
     
     /* enable reuse address socket option */
     int val = 1;

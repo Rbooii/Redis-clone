@@ -2,6 +2,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <cstdio>
+#include <algorithm>
 db database(4);
 
 Node *CreateNode(std::string key, std::string val)
@@ -208,50 +209,52 @@ std::vector<std::string> cmd_parse(const std::string &req)
 std::string cmd_exec(const std::vector<std::string> &parsed_cmd)
 {
   if (parsed_cmd.empty())
-    return "EMPTY";
-  const std::string &db_operand = parsed_cmd[0]; // get,set,del
-  if (db_operand == "set" && parsed_cmd.size() == 3)
+    return "-ERR empty command\r\n"; // RESP Error
+
+  std::string db_operand = parsed_cmd[0];
+  // Convert command ke lowercase case-insensitive (SET, set, Set bakal valid semua)
+  std::transform(db_operand.begin(), db_operand.end(), db_operand.begin(), ::tolower);
+
+  if (db_operand == "set" && (parsed_cmd.size() == 3 || parsed_cmd.size() == 5)) 
   {
-    if(parsed_cmd[2] == "NIL" || parsed_cmd[2] == "ERR") return "ERR"; //ga boleh set value = NIL | ERR -> reserved keyword
+    if(parsed_cmd[2] == "NIL" || parsed_cmd[2] == "ERR") return "-ERR reserved keyword\r\n"; 
+    
     int q = Insert(parsed_cmd[1], parsed_cmd[2]);
-    if (q == 1)
+    if (q == 1 || q == 2 || q == 3)
     {
-      return "OK SET";
-    }
-    else if (q == 2)
-    {
-      return "OK UPDATE";
-    }
-    else if (q == 3)
-    {
-      return "OK STILL";
+      return "+OK\r\n"; // RESP Simple String (sukses)
     }
     else
-      return "ERR";
+    {
+      return "-ERR internal error\r\n"; // RESP Error
+    }
   }
   else if (db_operand == "get" && parsed_cmd.size() == 2)
   {
-    Node *q =  Search_hash(parsed_cmd[1]);
-
+    Node *q = Search_hash(parsed_cmd[1]);
     if (q)
     {
-      return q->value;
+      // RESP Bulk String: $<panjang>\r\n<teks>\r\n
+      return "$" + std::to_string(q->value.size()) + "\r\n" + q->value + "\r\n";
     }
     else
     {
-      return "NIL";
+      // RESP Null Bulk String 
+      return "$-1\r\n";
     }
   }
   else if (db_operand == "del" && parsed_cmd.size() == 2)
   {
-    // bool delQ = db.erase(parsed_cmd[1]);
-    // return (delQ) ? "1" : "0";
-
     bool del_query = Delete(parsed_cmd[1]);
-    return del_query ? "OK DELETE" : "NIL";
+    if (del_query) {
+        // RESP Integer: :<angka>\r\n 
+        return ":1\r\n"; 
+    } else {
+        return ":0\r\n";
+    }
   }
   else
   {
-    return "ERR";
+    return "-ERR unknown command '" + parsed_cmd[0] + "'\r\n";
   }
 }

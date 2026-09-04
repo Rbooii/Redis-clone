@@ -103,34 +103,123 @@ void state_req(Conn *conn){
 }
 
 
+/*
+    parse stream RESP 
+    eg redis/redix CLI user type -> SET name arco
+    server redis/redix CLI send stream ->  *3\r\n$3\r\nSET\r\n$4\r\nnama\r\n$4\r\narco\r\n
+*/ 
+int32_t find_crlf(const uint8_t *data, size_t len, size_t start_idx) {
+    for (size_t i = start_idx; i + 1 < len; i++) {
+        if (data[i] == '\r' && data[i+1] == '\n') {
+            return i;
+        }
+    }
+    return -1; 
+}
+
+int32_t parse_resp(const uint8_t *data, size_t len, std::vector<std::string> &out_cmd)
+{
+    if(len == 0) return 0;
+    if(data[0] != '*') return -1;
+    int32_t crlf_index = find_crlf(data, len, 0);
+    if(crlf_index < 0) return 0;
+
+    std::string array_len_str((char*)data + 1, crlf_index - 1);
+    int num_args = std::stoi(array_len_str);
+    size_t curr_pos = crlf_index + 2; //pass \r\n
+
+    //loop trough all argument 
+    for(int i = 0; i < num_args; i++){
+        if(curr_pos >= len) return 0;
+        if(data[curr_pos]!='$') return -1;
+        int32_t next_crlf = find_crlf(data,len,curr_pos);
+        if(next_crlf<0)return 0;
+
+        std::string bulk_len_str((char*)data + curr_pos + 1, next_crlf - (curr_pos + 1));
+        int bulk_len = std::stoi(bulk_len_str);
+
+        curr_pos = next_crlf + 2;
+        // CRITICAL: Cek apakah sisa buffer cukup untuk nampung Teks + \r\n
+        if (curr_pos + bulk_len + 2 > len) {
+            // Buffer kepotong di tengah jalan (TCP fragmentation). 
+            // Return 0 biar CoreIO nunggu sisa paketnya dateng.
+            return 0; 
+        }
+        
+        //push ke command vector string
+        out_cmd.push_back(std::string((char*)data + curr_pos, bulk_len));
+        curr_pos += bulk_len + 2;
+    }
+    return curr_pos; // Balikin jumlah total byte yang udah sukses diproses
+}
+
 
 bool try_one_req(Conn *conn){
-    if(conn->rbuf_size < 4) return false; //not enough byte even for message info
-    uint32_t len = 0;
-    memcpy(&len, &conn->rbuf[0], 4);
-    if(len > MAX_MESSAGE_LEN){
-        reportMessageNonError("Message too long!");
+    // if(conn->rbuf_size < 4) return false; //not enough byte even for message info
+    // uint32_t len = 0;
+    // memcpy(&len, &conn->rbuf[0], 4);
+    // if(len > MAX_MESSAGE_LEN){
+    //     reportMessageNonError("Message too long!");
+    //     conn->state = STATE_END;
+    //     return false;
+    // }
+    // if(4+len > conn->rbuf_size) return false; //message di buffer belum lengkap lanjut next iter
+    // printf("client Says : %.*s\n", len, &conn->rbuf[4]); // message buffer lengkap sizenya sama ama 4+len print message
+
+    // std::string req_text((char*)&conn->rbuf[4], len);
+    // std::vector<std::string> cmd = cmd_parse(req_text);
+    // std::string res_text = cmd_exec(cmd);
+    
+    // uint32_t res_len = (uint32_t)res_text.size();
+    // memcpy(&conn->wbuf[0], &res_len, 4);                  
+    // memcpy(&conn->wbuf[4], res_text.data(), res_len);     
+    // conn->wbuf_size = 4 + res_len;
+
+    // size_t remain = conn->rbuf_size - 4 - len;
+    // if(remain){
+    //     memmove(conn->rbuf, &conn->rbuf[4+len], remain);
+    // }
+    // conn->rbuf_size = remain;
+
+    // conn->state = STATE_RES;
+    // state_res(conn);
+    // return (conn->state == STATE_REQ);
+    if(conn->rbuf_size == 0) return false;
+    std::vector<std::string> cmd;
+    int32_t consumed_byte_stream = parse_resp(
+        conn->rbuf,
+        conn->rbuf_size,
+        cmd
+    );
+
+    if(consumed_byte_stream == 0){
+        return false;
+    }else if(consumed_byte_stream < 0){
+        reportErrorMessage("BAD RESP FORMAT!",0);
         conn->state = STATE_END;
         return false;
     }
-    if(4+len > conn->rbuf_size) return false; //message di buffer belum lengkap lanjut next iter
-    printf("client Says : %.*s\n", len, &conn->rbuf[4]); // message buffer lengkap sizenya sama ama 4+len print message
 
-    std::string req_text((char*)&conn->rbuf[4], len);
-    std::vector<std::string> cmd = cmd_parse(req_text);
     std::string res_text = cmd_exec(cmd);
-    
-    uint32_t res_len = (uint32_t)res_text.size();
-    memcpy(&conn->wbuf[0], &res_len, 4);                  
-    memcpy(&conn->wbuf[4], res_text.data(), res_len);     
-    conn->wbuf_size = 4 + res_len;
+    //feedback
+    printf("Client Command > ");
+    for(int x = 0; x < cmd.size(); x++){
+        printf("%s ", cmd[x].c_str());
+    }
+    printf("\n Server Response > %s", res_text.c_str());
 
-    size_t remain = conn->rbuf_size - 4 - len;
-    if(remain){
-        memmove(conn->rbuf, &conn->rbuf[4+len], remain);
+
+    //respond
+    uint32_t res_len = (uint32_t)res_text.size();
+    memcpy(&conn->wbuf[0], res_text.data(), res_len);
+    conn->wbuf_size = res_len;
+
+    // Geser sisa buffer (kalau ternyata client ngirim >1 command sekaligus/pipelining)
+    size_t remain = conn->rbuf_size - consumed_byte_stream;
+    if (remain > 0) {
+        memmove(conn->rbuf, &conn->rbuf[consumed_byte_stream], remain);
     }
     conn->rbuf_size = remain;
-
     conn->state = STATE_RES;
     state_res(conn);
     return (conn->state == STATE_REQ);
